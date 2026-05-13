@@ -1,11 +1,13 @@
 const express = require('express');
 const customerController = require('../controllers/customerController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const createRateLimiter = require('../middlewares/rateLimitMiddleware');
 const validateMiddleware = require('../middlewares/validateMiddleware');
 const { customerValidator } = require('../validators/customerValidators');
 
 const router = express.Router();
 
+router.use(createRateLimiter());
 router.use(authMiddleware);
 router.get('/', customerController.listCustomers);
 router.post('/', customerValidator, validateMiddleware, customerController.createCustomer);

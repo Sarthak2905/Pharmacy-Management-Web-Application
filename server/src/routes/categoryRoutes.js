@@ -1,12 +1,14 @@
 const express = require('express');
 const categoryController = require('../controllers/categoryController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const createRateLimiter = require('../middlewares/rateLimitMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 const validateMiddleware = require('../middlewares/validateMiddleware');
 const { categoryValidator } = require('../validators/medicineValidators');
 
 const router = express.Router();
 
+router.use(createRateLimiter());
 router.use(authMiddleware);
 router.get('/', categoryController.listCategories);
 router.post('/', roleMiddleware('admin', 'manager'), categoryValidator, validateMiddleware, categoryController.createCategory);

@@ -1,12 +1,14 @@
 const express = require('express');
 const medicineController = require('../controllers/medicineController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const createRateLimiter = require('../middlewares/rateLimitMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 const validateMiddleware = require('../middlewares/validateMiddleware');
 const { medicineValidator } = require('../validators/medicineValidators');
 
 const router = express.Router();
 
+router.use(createRateLimiter());
 router.use(authMiddleware);
 router.get('/', medicineController.listMedicines);
 router.get('/search', medicineController.searchMedicines);

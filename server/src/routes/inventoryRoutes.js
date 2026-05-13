@@ -1,10 +1,12 @@
 const express = require('express');
 const inventoryController = require('../controllers/inventoryController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const createRateLimiter = require('../middlewares/rateLimitMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 
 const router = express.Router();
 
+router.use(createRateLimiter());
 router.use(authMiddleware);
 router.get('/summary', inventoryController.getSummary);
 router.get('/movements', inventoryController.getMovements);
