@@ -1,13 +1,18 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Express API for the Pharmacy Management Web Application.",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "check": "node -e \"require('./src/app'); console.log('server-ok')\""
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "pharmacy",
+    "express",
+    "mongodb"
+  ],
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {

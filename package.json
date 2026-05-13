@@ -1,19 +1,24 @@
 {
   "name": "pharmacy-management-web-application",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "Monorepo starter for a MERN-based pharmacy management SaaS application.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build": "npm --prefix client run build",
+    "lint": "npm --prefix client run lint",
+    "check:server": "npm --prefix server run check"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Sarthak2905/Pharmacy-Management-Web-Application.git"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/Sarthak2905/Pharmacy-Management-Web-Application/issues"
   },
