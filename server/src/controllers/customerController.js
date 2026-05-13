@@ -1,16 +1,31 @@
 const asyncHandler = require('../utils/asyncHandler');
 const Bill = require('../models/Bill');
 const Customer = require('../models/Customer');
+const { toObjectId } = require('../utils/objectId');
 const { getPagination } = require('../utils/pagination');
+const { buildSearchRegex } = require('../utils/safeRegex');
+
+function sanitizeCustomerPayload(payload) {
+  return {
+    name: String(payload.name).trim(),
+    ...(payload.phone !== undefined ? { phone: String(payload.phone).trim() } : {}),
+    ...(payload.email !== undefined ? { email: String(payload.email).trim().toLowerCase() } : {}),
+    ...(payload.address !== undefined ? { address: String(payload.address).trim() } : {}),
+    ...(payload.gender !== undefined ? { gender: String(payload.gender).trim() } : {}),
+    ...(payload.dateOfBirth !== undefined ? { dateOfBirth: payload.dateOfBirth ? new Date(payload.dateOfBirth) : null } : {}),
+    ...(payload.notes !== undefined ? { notes: String(payload.notes).trim() } : {}),
+  };
+}
 
 const listCustomers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req.query);
+  const safeQuery = req.query.q ? buildSearchRegex(req.query.q) : null;
   const filter = req.query.q
     ? {
         $or: [
-          { name: { $regex: req.query.q, $options: 'i' } },
-          { phone: { $regex: req.query.q, $options: 'i' } },
-          { email: { $regex: req.query.q, $options: 'i' } },
+          { name: safeQuery },
+          { phone: safeQuery },
+          { email: safeQuery },
         ],
       }
     : {};
@@ -35,12 +50,12 @@ const listCustomers = asyncHandler(async (req, res) => {
 });
 
 const createCustomer = asyncHandler(async (req, res) => {
-  const data = await Customer.create(req.body);
+  const data = await Customer.create(sanitizeCustomerPayload(req.body));
   res.status(201).json({ success: true, message: 'Customer created successfully', data });
 });
 
 const getCustomer = asyncHandler(async (req, res) => {
-  const data = await Customer.findById(req.params.id);
+  const data = await Customer.findById(toObjectId(req.params.id));
   if (!data) {
     return res.status(404).json({ success: false, message: 'Customer not found' });
   }
@@ -48,7 +63,11 @@ const getCustomer = asyncHandler(async (req, res) => {
 });
 
 const updateCustomer = asyncHandler(async (req, res) => {
-  const data = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+  const data = await Customer.findByIdAndUpdate(
+    toObjectId(req.params.id),
+    sanitizeCustomerPayload(req.body),
+    { new: true, runValidators: true },
+  );
   if (!data) {
     return res.status(404).json({ success: false, message: 'Customer not found' });
   }
@@ -56,17 +75,17 @@ const updateCustomer = asyncHandler(async (req, res) => {
 });
 
 const getCustomerBills = asyncHandler(async (req, res) => {
-  const data = await Bill.find({ customerId: req.params.id }).sort({ createdAt: -1 });
+  const data = await Bill.find({ customerId: toObjectId(req.params.id, 'customerId') }).sort({ createdAt: -1 });
   res.json({ success: true, data });
 });
 
 const searchCustomers = asyncHandler(async (req, res) => {
-  const q = req.query.q || '';
+  const safeQuery = buildSearchRegex(req.query.q || '');
   const data = await Customer.find({
     $or: [
-      { name: { $regex: q, $options: 'i' } },
-      { phone: { $regex: q, $options: 'i' } },
-      { email: { $regex: q, $options: 'i' } },
+      { name: safeQuery },
+      { phone: safeQuery },
+      { email: safeQuery },
     ],
   }).limit(20);
   res.json({ success: true, data });
@@ -74,7 +93,7 @@ const searchCustomers = asyncHandler(async (req, res) => {
 
 const payDue = asyncHandler(async (req, res) => {
   const amount = Number(req.body.amount || 0);
-  const customer = await Customer.findById(req.params.id);
+  const customer = await Customer.findById(toObjectId(req.params.id));
   if (!customer) {
     return res.status(404).json({ success: false, message: 'Customer not found' });
   }

@@ -11,7 +11,7 @@ const me = asyncHandler(async (req, res) => {
 });
 
 const refresh = asyncHandler(async (req, res) => {
-  const token = req.body.refreshToken || req.cookies.refreshToken;
+  const token = req.body.refreshToken;
   const result = await authService.refresh(token);
   res.json({ success: true, message: 'Token refreshed', data: result });
 });

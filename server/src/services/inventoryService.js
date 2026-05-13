@@ -1,5 +1,6 @@
 const Medicine = require('../models/Medicine');
 const StockMovement = require('../models/StockMovement');
+const { toObjectId } = require('../utils/objectId');
 
 async function getInventorySummary() {
   const [totalMedicines, lowStockCount, totalStockUnits] = await Promise.all([
@@ -20,7 +21,9 @@ async function getStockMovements() {
 }
 
 async function adjustStock({ medicineId, quantityChange, notes, type = 'adjustment' }, userId) {
-  const medicine = await Medicine.findById(medicineId);
+  const safeMedicineId = toObjectId(medicineId, 'medicineId');
+  const safeQuantityChange = Number(quantityChange);
+  const medicine = await Medicine.findById(safeMedicineId);
   if (!medicine) {
     const error = new Error('Medicine not found');
     error.statusCode = 404;
@@ -28,7 +31,7 @@ async function adjustStock({ medicineId, quantityChange, notes, type = 'adjustme
   }
 
   const quantityBefore = medicine.stockQuantity;
-  const quantityAfter = quantityBefore + Number(quantityChange);
+  const quantityAfter = quantityBefore + safeQuantityChange;
   if (quantityAfter < 0) {
     const error = new Error('Stock cannot become negative');
     error.statusCode = 400;
@@ -41,11 +44,11 @@ async function adjustStock({ medicineId, quantityChange, notes, type = 'adjustme
   await StockMovement.create({
     medicineId,
     type,
-    quantityChange,
+    quantityChange: safeQuantityChange,
     quantityBefore,
     quantityAfter,
     referenceType: 'manual',
-    notes,
+    notes: notes ? String(notes).trim() : '',
     createdBy: userId,
   });
 

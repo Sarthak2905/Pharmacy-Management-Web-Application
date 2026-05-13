@@ -4,7 +4,7 @@ const User = require('../models/User');
 async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : req.cookies.accessToken;
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     if (!token) {
       return res.status(401).json({ success: false, message: 'Authentication required' });

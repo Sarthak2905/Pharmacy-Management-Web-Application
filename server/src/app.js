@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-const cookieParser = require('cookie-parser');
 const cron = require('node-cron');
 const env = require('./config/env');
+const createRateLimiter = require('./middlewares/rateLimitMiddleware');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -26,7 +26,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(createRateLimiter());
 
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Pharmacy Management API is running' });

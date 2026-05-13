@@ -1,6 +1,7 @@
 const asyncHandler = require('../utils/asyncHandler');
 const User = require('../models/User');
 const { sanitizeUser } = require('../services/authService');
+const { toObjectId } = require('../utils/objectId');
 
 const listUsers = asyncHandler(async (req, res) => {
   const users = await User.find().sort({ createdAt: -1 });
@@ -8,7 +9,11 @@ const listUsers = asyncHandler(async (req, res) => {
 });
 
 const updateUserRole = asyncHandler(async (req, res) => {
-  const user = await User.findByIdAndUpdate(req.params.id, { role: req.body.role }, { new: true, runValidators: true });
+  const user = await User.findByIdAndUpdate(
+    toObjectId(req.params.id),
+    { role: String(req.body.role).trim() },
+    { new: true, runValidators: true },
+  );
   if (!user) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
@@ -16,7 +21,11 @@ const updateUserRole = asyncHandler(async (req, res) => {
 });
 
 const updateUserStatus = asyncHandler(async (req, res) => {
-  const user = await User.findByIdAndUpdate(req.params.id, { isActive: req.body.isActive }, { new: true, runValidators: true });
+  const user = await User.findByIdAndUpdate(
+    toObjectId(req.params.id),
+    { isActive: Boolean(req.body.isActive) },
+    { new: true, runValidators: true },
+  );
   if (!user) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }

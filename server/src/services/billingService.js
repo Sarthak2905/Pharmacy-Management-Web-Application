@@ -3,20 +3,21 @@ const Customer = require('../models/Customer');
 const Medicine = require('../models/Medicine');
 const StockMovement = require('../models/StockMovement');
 const { calculateLineTotals, roundCurrency } = require('../utils/gstCalculator');
+const { toObjectId } = require('../utils/objectId');
 
 function buildBillNumber() {
   return `BILL-${Date.now()}`;
 }
 
-function derivePaymentStatus(amountDue) {
+function derivePaymentStatus(amountDue, amountPaid) {
   if (amountDue <= 0) {
     return 'paid';
   }
-  return amountDue > 0 ? 'partial' : 'due';
+  return amountPaid > 0 ? 'partial' : 'due';
 }
 
 async function createBill(payload, userId) {
-  const medicineIds = payload.items.map((item) => item.medicineId);
+  const medicineIds = payload.items.map((item) => toObjectId(item.medicineId, 'medicineId'));
   const medicines = await Medicine.find({ _id: { $in: medicineIds } });
   const medicineMap = new Map(medicines.map((medicine) => [String(medicine._id), medicine]));
 
@@ -45,7 +46,7 @@ async function createBill(payload, userId) {
       medicineId: medicine._id,
       medicineNameSnapshot: medicine.name,
       batchNumberSnapshot: medicine.batchNumber,
-      quantity: item.quantity,
+      quantity: Number(item.quantity),
       unitPrice: medicine.sellingPrice,
       gstRate: medicine.gstRate,
       ...lineTotals,
@@ -56,7 +57,8 @@ async function createBill(payload, userId) {
   const grandTotal = roundCurrency(subtotal + totalTax - discountAmount);
   const amountPaid = roundCurrency(payload.amountPaid ?? grandTotal);
   const amountDue = roundCurrency(Math.max(grandTotal - amountPaid, 0));
-  const paymentStatus = payload.paymentStatus || derivePaymentStatus(amountDue);
+  const paymentStatus = payload.paymentStatus || derivePaymentStatus(amountDue, amountPaid);
+  const customerId = payload.customerId ? toObjectId(payload.customerId, 'customerId') : undefined;
 
   for (const lineItem of items) {
     const medicine = medicineMap.get(String(lineItem.medicineId));
@@ -76,7 +78,7 @@ async function createBill(payload, userId) {
   }
 
   if (payload.customerId) {
-    await Customer.findByIdAndUpdate(payload.customerId, {
+    await Customer.findByIdAndUpdate(customerId, {
       $inc: {
         totalPurchases: grandTotal,
         outstandingDue: amountDue,
@@ -86,7 +88,7 @@ async function createBill(payload, userId) {
 
   const bill = await Bill.create({
     billNumber: buildBillNumber(),
-    customerId: payload.customerId,
+    customerId,
     cashierId: userId,
     items,
     subtotal: roundCurrency(subtotal),

@@ -1,13 +1,47 @@
 const Category = require('../models/Category');
 const Medicine = require('../models/Medicine');
+const { toObjectId } = require('../utils/objectId');
 const { getPagination } = require('../utils/pagination');
+const { buildSearchRegex } = require('../utils/safeRegex');
+
+function sanitizeMedicinePayload(payload) {
+  const result = {};
+
+  if (payload.name !== undefined) result.name = String(payload.name).trim();
+  if (payload.genericName !== undefined) result.genericName = String(payload.genericName).trim();
+  if (payload.brandName !== undefined) result.brandName = String(payload.brandName).trim();
+  if (payload.categoryId !== undefined && payload.categoryId !== '') result.categoryId = toObjectId(payload.categoryId, 'categoryId');
+  if (payload.manufacturer !== undefined) result.manufacturer = String(payload.manufacturer).trim();
+  if (payload.batchNumber !== undefined) result.batchNumber = String(payload.batchNumber).trim();
+  if (payload.barcode !== undefined) result.barcode = String(payload.barcode).trim();
+  if (payload.expiryDate !== undefined) result.expiryDate = new Date(payload.expiryDate);
+  if (payload.purchasePrice !== undefined) result.purchasePrice = Number(payload.purchasePrice);
+  if (payload.sellingPrice !== undefined) result.sellingPrice = Number(payload.sellingPrice);
+  if (payload.mrp !== undefined) result.mrp = Number(payload.mrp);
+  if (payload.gstRate !== undefined) result.gstRate = Number(payload.gstRate);
+  if (payload.stockQuantity !== undefined) result.stockQuantity = Number(payload.stockQuantity);
+  if (payload.reorderLevel !== undefined) result.reorderLevel = Number(payload.reorderLevel);
+  if (payload.unitType !== undefined) result.unitType = String(payload.unitType).trim();
+  if (payload.locationInStore !== undefined) result.locationInStore = String(payload.locationInStore).trim();
+  if (payload.isActive !== undefined) result.isActive = Boolean(payload.isActive);
+
+  return result;
+}
+
+function sanitizeCategoryPayload(payload) {
+  return {
+    name: String(payload.name).trim(),
+    description: payload.description ? String(payload.description).trim() : '',
+    ...(payload.isActive !== undefined ? { isActive: Boolean(payload.isActive) } : {}),
+  };
+}
 
 async function listMedicines(query) {
   const { page, limit, skip } = getPagination(query);
   const filter = {};
 
   if (query.categoryId) {
-    filter.categoryId = query.categoryId;
+    filter.categoryId = toObjectId(query.categoryId, 'categoryId');
   }
 
   if (query.isActive !== undefined) {
@@ -15,11 +49,12 @@ async function listMedicines(query) {
   }
 
   if (query.search) {
+    const safeSearch = buildSearchRegex(query.search);
     filter.$or = [
-      { name: { $regex: query.search, $options: 'i' } },
-      { genericName: { $regex: query.search, $options: 'i' } },
-      { brandName: { $regex: query.search, $options: 'i' } },
-      { barcode: { $regex: query.search, $options: 'i' } },
+      { name: safeSearch },
+      { genericName: safeSearch },
+      { brandName: safeSearch },
+      { barcode: safeSearch },
     ];
   }
 
@@ -44,12 +79,16 @@ async function listMedicines(query) {
 }
 
 async function createMedicine(payload, userId) {
-  const medicine = await Medicine.create({ ...payload, createdBy: userId });
+  const medicine = await Medicine.create({ ...sanitizeMedicinePayload(payload), createdBy: userId });
   return medicine.populate('categoryId', 'name');
 }
 
 async function updateMedicine(id, payload) {
-  const medicine = await Medicine.findByIdAndUpdate(id, payload, { new: true, runValidators: true }).populate('categoryId', 'name');
+  const medicine = await Medicine.findByIdAndUpdate(
+    toObjectId(id),
+    sanitizeMedicinePayload(payload),
+    { new: true, runValidators: true },
+  ).populate('categoryId', 'name');
   if (!medicine) {
     const error = new Error('Medicine not found');
     error.statusCode = 404;
@@ -59,7 +98,7 @@ async function updateMedicine(id, payload) {
 }
 
 async function deleteMedicine(id) {
-  const medicine = await Medicine.findByIdAndDelete(id);
+  const medicine = await Medicine.findByIdAndDelete(toObjectId(id));
   if (!medicine) {
     const error = new Error('Medicine not found');
     error.statusCode = 404;
@@ -69,7 +108,7 @@ async function deleteMedicine(id) {
 }
 
 async function getMedicine(id) {
-  const medicine = await Medicine.findById(id).populate('categoryId', 'name');
+  const medicine = await Medicine.findById(toObjectId(id)).populate('categoryId', 'name');
   if (!medicine) {
     const error = new Error('Medicine not found');
     error.statusCode = 404;
@@ -79,12 +118,13 @@ async function getMedicine(id) {
 }
 
 async function searchMedicines(search) {
+  const safeSearch = buildSearchRegex(search);
   return Medicine.find({
     $or: [
-      { name: { $regex: search, $options: 'i' } },
-      { genericName: { $regex: search, $options: 'i' } },
-      { brandName: { $regex: search, $options: 'i' } },
-      { barcode: { $regex: search, $options: 'i' } },
+      { name: safeSearch },
+      { genericName: safeSearch },
+      { brandName: safeSearch },
+      { barcode: safeSearch },
     ],
   })
     .limit(20)
@@ -108,11 +148,15 @@ async function listCategories() {
 }
 
 async function createCategory(payload) {
-  return Category.create(payload);
+  return Category.create(sanitizeCategoryPayload(payload));
 }
 
 async function updateCategory(id, payload) {
-  const category = await Category.findByIdAndUpdate(id, payload, { new: true, runValidators: true });
+  const category = await Category.findByIdAndUpdate(
+    toObjectId(id),
+    sanitizeCategoryPayload(payload),
+    { new: true, runValidators: true },
+  );
   if (!category) {
     const error = new Error('Category not found');
     error.statusCode = 404;
@@ -122,7 +166,7 @@ async function updateCategory(id, payload) {
 }
 
 async function deleteCategory(id) {
-  const category = await Category.findByIdAndDelete(id);
+  const category = await Category.findByIdAndDelete(toObjectId(id));
   if (!category) {
     const error = new Error('Category not found');
     error.statusCode = 404;
